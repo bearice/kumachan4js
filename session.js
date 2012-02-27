@@ -7,18 +7,9 @@ function Session(cookies,timeout,key){
     this.timeout = timeout;
     this.key = key;
     this.id  = cookies.get("session_id");
-    if(this.id)return;
-    var hmac = crypto.createHmac("sha1", this.key);
-    hmac.update(String(session_seq++));
-    this.id = sid = hmac.digest('hex');
-    this.cookies.set("session_id",sid);
-    var session = {
-        timeout : this.timeout,
-        values : {},
-        id : sid,
-    };
-    sessions[sid] = session;
-    resetSessionTimeout(session);
+    if(!this.id || !sessions[this.id]){
+        this.genSessionId();    
+    }
 }
 
 function resetSessionTimeout(session){
@@ -30,21 +21,35 @@ function resetSessionTimeout(session){
     },session.timeout);
 }
 
+Session.prototype.genSessionId = function(){
+    var hmac = crypto.createHmac("sha1", this.key);
+    hmac.update(String(session_seq++));
+    this.id = hmac.digest('hex');
+    this.cookies.set("session_id",this.id);
+    var session = {
+        timeout : this.timeout,
+        values : {},
+        id : this.id,
+    };
+    sessions[this.id] = session;
+    resetSessionTimeout(session);
+}
+
 Session.prototype.clear = function(){
-    var sid = this.cookies.get("session_id");
-    if(sid){
-        var session = sessions[sid];
+    if(this.id){
+        var session = sessions[this.id];
         if(session){
-        	sessions[sid] = null;
+        	sessions[this.id] = null;
         	clearTimeout(session.timeoutId);
         }
     }
+    this.genSessionId();
 }
 
 Session.prototype.get = function(key){
-    var sid = this.cookies.get("session_id");
-    if(sid){
-        var session = sessions[sid];
+    //console.info(sessions);
+    if(this.id){
+        var session = sessions[this.id];
         if(session){
         	resetSessionTimeout(session);
             return session.values[key];
@@ -54,14 +59,14 @@ Session.prototype.get = function(key){
 }
 
 Session.prototype.set = function(key,val){
-    var sid = this.cookies.get("session_id");
-    if(sid){
-        var session = sessions[sid];
-        if(session){
-        	resetSessionTimeout(session);
-            session.values[key] = val;
-            return;
-        }
+    if(!this.id){
+        this.genSessionId();    
+    }
+    var session = sessions[this.id];
+    if(session){
+        resetSessionTimeout(session);
+        session.values[key] = val;
+        return;
     }
 }
 
