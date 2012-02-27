@@ -67,8 +67,16 @@ function KumaServer(dispatch_table,cookies_key,session_config){
 
         request.info = url.parse(request.url,true);
         response.setHeader("Server","KumaChan4JS/1.1.0");
-        
-        var handler = dispatch_table[request.info.pathname];
+        var handler; 
+        for(var path in dispatch_table){
+            if(typeof(path)=='string' && path == request.info.pathname){
+                handler = dispatch_table[path];
+                break;
+            }else if(path instanceof RegExp && path.test(request.info.pathname)){
+                handler = dispatch_table[path];
+                break;
+            }
+        }
         if(handler){
             handler(request,response);
         }else{
