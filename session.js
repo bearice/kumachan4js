@@ -6,6 +6,19 @@ function Session(cookies,timeout,key){
     this.cookies = cookies;
     this.timeout = timeout;
     this.key = key;
+    this.id  = cookies.get("session_id");
+    if(this.id)return;
+    var hmac = crypto.createHmac("sha1", this.key);
+    hmac.update(String(session_seq++));
+    this.id = sid = hmac.digest('hex');
+    this.cookies.set("session_id",sid);
+    var session = {
+        timeout : this.timeout,
+        values : {},
+        id : sid,
+    };
+    sessions[sid] = session;
+    resetSessionTimeout(session);
 }
 
 function resetSessionTimeout(session){
@@ -50,18 +63,6 @@ Session.prototype.set = function(key,val){
             return;
         }
     }
-    var hmac = crypto.createHmac("sha1", this.key);
-    hmac.update(String(session_seq++));
-    sid = hmac.digest('hex');
-    this.cookies.set("session_id",sid);
-    var session = {
-        timeout : this.timeout,
-        values : {},
-        id : sid,
-    };
-    session.values[key]=val;
-    sessions[sid] = session;
-    resetSessionTimeout(session);
 }
 
 module.exports = Session;
