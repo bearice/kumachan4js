@@ -59,22 +59,36 @@ function static(req,resp){
     s.pipe(resp);
 }
 
-function KumaServer(dispatch_table,cookies_key,session_config){
+function KumaServer(dispatch_table,cookies_key,session_config,tag){
+    if(dispatch_table % 2)throw "bad dispatch_table";
+    var relist = [];
+    var remap  = {};
+    var lookup = {};
+    for(var i = 0;i<dispatch_table.length;){
+        var k = dispatch_table[i++]
+        var v = dispatch_table[i++]
+        if (typeof(k)=='string') {
+            lookup[k] = v;
+        }else if(k instanceof RegExp){
+            remap[k] = v;
+            relist.push(k);
+        }
+    }
     function disaptch(request, response) {
         console.info("%s %s %s",request.connection.remoteAddress,request.method,request.url);
         request.cookies = new Cookies(request,response,cookies_key);
         request.session = new Session(request.cookies ,session_config.timeout,session_config.key);
 
         request.info = url.parse(request.url,true);
-        response.setHeader("Server","KumaChan4JS/1.1.0");
-        var handler; 
-        for(var path in dispatch_table){
-            if(typeof(path)=='string' && path == request.info.pathname){
-                handler = dispatch_table[path];
-                break;
-            }else if(path instanceof RegExp && path.test(request.info.pathname)){
-                handler = dispatch_table[path];
-                break;
+        response.setHeader("Server","KumaChan4JS/1.1.0 " + (tag || ""));
+        var handler = lookup[request.info.pathname];
+        if(handler === undefined){
+            for(var regexp in relist){
+                regexp = relist[regexp];
+                if(regexp.test(request.info.pathname)){
+                    handler = remap[regexp];
+                    break;
+                }
             }
         }
         if(handler){
@@ -86,5 +100,7 @@ function KumaServer(dispatch_table,cookies_key,session_config){
     var server = http.createServer(disaptch);
     return server; 
 }
+
+KumaServer.serveStatic = static;
 
 module.exports = KumaServer
