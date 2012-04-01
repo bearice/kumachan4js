@@ -75,26 +75,30 @@ function KumaServer(dispatch_table,cookies_key,session_config,tag){
         }
     }
     function disaptch(request, response) {
-        console.info("%s %s %s",request.connection.remoteAddress,request.method,request.url);
-        request.cookies = new Cookies(request,response,cookies_key);
-        request.session = new Session(request.cookies ,session_config.timeout,session_config.key);
+    	try{
+            console.info("%s %s %s",request.connection.remoteAddress,request.method,request.url);
+            request.cookies = new Cookies(request,response,cookies_key);
+            request.session = new Session(request.cookies ,session_config.timeout,session_config.key);
 
-        request.info = url.parse(request.url,true);
-        response.setHeader("Server","KumaChan4JS/1.1.0 " + (tag || ""));
-        var handler = lookup[request.info.pathname];
-        if(handler === undefined){
-            for(var regexp in relist){
-                regexp = relist[regexp];
-                if(regexp.test(request.info.pathname)){
-                    handler = remap[regexp];
-                    break;
+            request.info = url.parse(request.url,true);
+            response.setHeader("Server","KumaChan4JS/1.1.0 " + (tag || ""));
+            var handler = lookup[request.info.pathname];
+            if(handler === undefined){
+                for(var regexp in relist){
+                    regexp = relist[regexp];
+                    if(regexp.test(request.info.pathname)){
+                        handler = remap[regexp];
+                        break;
+                    }
                 }
             }
-        }
-        if(handler){
-            handler(request,response);
-        }else{
-            static(request,response);
+            if(handler){
+                handler(request,response);
+            }else{
+                static(request,response);
+            }
+        }catch(e){
+            console.info(e);
         }
     }
     var server = http.createServer(disaptch);
